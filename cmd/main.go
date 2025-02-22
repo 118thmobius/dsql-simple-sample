@@ -41,7 +41,7 @@ func main() {
 		fmt.Println(err)
 		panic(err)
 	} else {
-		fmt.Println("Transfer completed.\n")
+		fmt.Println("Transfer completed.")
 	}
 
 	account, err = accountUseCase.GetAccountByID(ctx, "Alice")

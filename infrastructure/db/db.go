@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"os"
@@ -33,39 +32,6 @@ func generateDbConnectAdminAuthToken(creds *credentials.Credentials, region stri
 	}
 	url := req.URL.String()[len("https://"):]
 	return url, nil
-}
-
-func GetConnection(ctx context.Context, region string, clusterEndpoint string) (*pgx.Conn, error) {
-	var sb strings.Builder
-	sb.WriteString("postgres://")
-	sb.WriteString(clusterEndpoint)
-	sb.WriteString(":5432/postgres?user=admin&sslmode=verify-full")
-	url := sb.String()
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
-	creds, err := sess.Config.Credentials.Get()
-	if err != nil {
-		return nil, err
-	}
-	staticCredentials := credentials.NewStaticCredentials(
-		creds.AccessKeyID,
-		creds.SecretAccessKey,
-		creds.SessionToken,
-	)
-	token, err := generateDbConnectAdminAuthToken(staticCredentials, region, clusterEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	connConfig, err := pgx.ParseConfig(url)
-	connConfig.Password = token
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to parse config: %v\n", err)
-		os.Exit(1)
-	}
-	conn, err := pgx.ConnectConfig(ctx, connConfig)
-	return conn, err
 }
 
 func GetPool(ctx context.Context, region string, clusterEndpoint string) (*pgxpool.Pool, error) {
@@ -99,23 +65,4 @@ func GetPool(ctx context.Context, region string, clusterEndpoint string) (*pgxpo
 	}
 	conn, err := pgxpool.NewWithConfig(ctx, connConfig)
 	return conn, err
-}
-
-func NewDBPool(ctx context.Context) (*pgxpool.Pool, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://user:password@localhost:5432/mydb?sslmode=disable"
-	}
-
-	cfg, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pool: %w", err)
-	}
-
-	return pool, nil
 }

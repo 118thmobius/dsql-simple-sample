@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"dsql-simple-sample/domain"
+	"dsql-simple-sample/infrastructure/db"
 	"dsql-simple-sample/repository"
 	"errors"
 )
@@ -14,17 +15,14 @@ func NewAccountRepository() repository.AccountRepository {
 	return &AccountRepositoryImpl{}
 }
 
-func (r AccountRepositoryImpl) GetAccountByID(ctx context.Context, tx repository.TxOrConn, userId string) (*domain.Account, error) {
-	row, err := tx.QueryRow(ctx, `
+func (r AccountRepositoryImpl) GetAccountByID(ctx context.Context, q db.Queryer, userId string) (*domain.Account, error) {
+	row := q.QueryRow(ctx, `
 		SELECT user_id, city, balance
 		FROM simple_account
 		WHERE user_id = $1
 		`, userId)
-	if err != nil {
-		return nil, err
-	}
 	var account domain.Account
-	err = row.Scan(
+	err := row.Scan(
 		&account.UserId,
 		&account.City,
 		&account.Balance,
@@ -35,8 +33,8 @@ func (r AccountRepositoryImpl) GetAccountByID(ctx context.Context, tx repository
 	return &account, nil
 }
 
-func (r AccountRepositoryImpl) UpdateAccount(ctx context.Context, tx repository.TxOrConn, userId string, balance int) error {
-	cmdTag, err := tx.Exec(ctx, `
+func (r AccountRepositoryImpl) UpdateAccount(ctx context.Context, q db.Queryer, userId string, balance int) error {
+	cmdTag, err := q.Exec(ctx, `
 		UPDATE simple_account 
 		SET balance = $1 
 		WHERE user_id = $2

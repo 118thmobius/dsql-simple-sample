@@ -11,8 +11,8 @@ import (
 )
 
 type AccountUseCase interface {
-	Transfer(ctx context.Context, from, to domain.Account, amount int) error
 	GetAccountByID(ctx context.Context, userId string) (*domain.Account, error)
+	Transfer(ctx context.Context, from, to string, amount int) error
 }
 
 type AccountUseCaseImpl struct {

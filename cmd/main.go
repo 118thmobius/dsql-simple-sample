@@ -8,13 +8,70 @@ import (
 	"dsql-simple-sample/service"
 	"dsql-simple-sample/usecase"
 	"fmt"
+	"github.com/spf13/cobra"
 	"os"
+	"strconv"
 )
+
+var accountUseCase usecase.AccountUseCase
+
+var rootCmd = &cobra.Command{
+	Use: "dsql-simple-sample",
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var transferCmd = &cobra.Command{
+	Use:  "transfer",
+	Args: cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		fromId := args[0]
+		toId := args[1]
+		amount := args[2]
+
+		amountInt, err := strconv.Atoi(amount)
+		if err != nil {
+			fmt.Println("amount must be integer.")
+		}
+
+		err = accountUseCase.Transfer(context.Background(), fromId, toId, amountInt)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println("Transfer", amountInt, "from", fromId, "to", toId, "amount", amountInt)
+	},
+}
+
+var showCmd = &cobra.Command{
+	Use:  "show",
+	Args: cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+
+		account, err := accountUseCase.GetAccountByID(context.Background(), id)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			printAccount(account)
+		}
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(transferCmd)
+	rootCmd.AddCommand(showCmd)
+}
 
 func main() {
 	ctx := context.Background()
 	region := os.Getenv("AWS_REGION")
 	clusterEndpoint := os.Getenv("AWS_CLUSTER_ENDPOINT")
+	if region == "" || clusterEndpoint == "" {
+		panic("AWS_REGION or AWS_CLUSTER_ENDPOINT is not set.")
+	}
+
 	pool, err := db.GetPool(ctx, region, clusterEndpoint)
 	if err != nil {
 		panic(err)
@@ -25,31 +82,11 @@ func main() {
 	accountRepository := infrastructure.NewAccountRepository()
 	transactionRepository := infrastructure.NewTransactionRepository()
 	txDomainService := service.NewTransactionDomainService()
-	accountUseCase := usecase.NewAccountUseCase(txManager, accountRepository, transactionRepository, txDomainService)
+	accountUseCase = usecase.NewAccountUseCase(txManager, accountRepository, transactionRepository, txDomainService)
 
-	account, err := accountUseCase.GetAccountByID(ctx, "Alice")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("[*] Before transfer:")
-	printAccount(account)
-	fmt.Println("")
-
-	fmt.Println("[*] Begin transfer...")
-	fmt.Println("Transfer 500 from Alice to Bob.")
-	if err := accountUseCase.Transfer(ctx, "Alice", "Bob", 500); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
-		panic(err)
-	} else {
-		fmt.Println("Transfer completed.")
 	}
-
-	account, err = accountUseCase.GetAccountByID(ctx, "Alice")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("[*] After transfer:")
-	printAccount(account)
 }
 
 func printAccount(account *domain.Account) {

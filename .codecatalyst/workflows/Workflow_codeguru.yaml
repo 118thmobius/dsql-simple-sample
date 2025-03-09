@@ -1,0 +1,28 @@
+Name: Workflow_1cea
+SchemaVersion: "1.0"
+
+# Optional - Set automatic triggers.
+Triggers:
+  - Type: Push
+    Branches:
+      - codecatalyst
+
+# Required - Define action configurations.
+Actions:
+  ScanWithAmazonCodeGuruSecurity_3c:
+    # Identifies the action. Do not modify this value.
+    Identifier: codecatalyst-labs/scan-with-codeguru-security@v1.1.0
+    # Required; You can use an environment to access AWS resources.
+    Environment:
+      Name: codecatalyst
+    # Specifies the source and/or artifacts to pass to the action as input.
+    Inputs:
+      # Optional
+      Sources:
+        - WorkflowSource # This specifies that the action requires this Workflow as a source
+    Compute:
+      Type: EC2
+    Configuration:
+      GenerateReport: true
+      IncludeQualityScan: true
+      Path: .
